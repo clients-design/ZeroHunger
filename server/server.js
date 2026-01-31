@@ -82,6 +82,12 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`🚀 ZeroHunger server running on http://localhost:${PORT}`);
-});
+// Only listen when not in serverless environment
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 ZeroHunger server running on http://localhost:${PORT}`);
+    });
+}
+
+// Export for Vercel
+module.exports = app;

@@ -14,9 +14,6 @@ const distributionRoutes = require('./routes/distribution');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -24,6 +21,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Connect to MongoDB before handling requests
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (error) {
+        console.error('DB Connection Error:', error);
+        res.status(500).json({ message: 'Database connection failed' });
+    }
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -80,9 +88,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Catch-all for SPA routing
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 
-// Only listen when not in serverless environment
+// Only listen when running locally
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`🚀 ZeroHunger server running on http://localhost:${PORT}`);

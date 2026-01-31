@@ -4,9 +4,12 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
+// JWT Secret with fallback
+const JWT_SECRET = process.env.JWT_SECRET || 'zerohunger-secret-2024';
+
 // Generate JWT
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+    return jwt.sign({ id }, JWT_SECRET, {
         expiresIn: '30d'
     });
 };

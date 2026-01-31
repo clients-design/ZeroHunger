@@ -6,13 +6,10 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-const connectDB = async () => {
-  // Check if MONGODB_URI is set
-  if (!process.env.MONGODB_URI) {
-    console.error('MONGODB_URI environment variable is not set!');
-    throw new Error('Database configuration missing');
-  }
+// Hardcoded MongoDB URI for deployment
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://jaypatel:OmJayVaishali%40123@cluster0.efqihpm.mongodb.net/zerohunger?retryWrites=true&w=majority';
 
+const connectDB = async () => {
   if (cached.conn) {
     return cached.conn;
   }
@@ -22,7 +19,7 @@ const connectDB = async () => {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       console.log('✅ MongoDB Connected');
       return mongoose;
     });

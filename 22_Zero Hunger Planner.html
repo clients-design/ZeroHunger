@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zero Hunger Planner — Mockup</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--ms-blue:#0078d4; --muted:#6b7278; --bg:#f3f6fb; --card-radius:12px}
+    body{font-family:Segoe UI, system-ui, -apple-system, 'Helvetica Neue', Arial; background:var(--bg); color:#222}
+    .app-header{background:linear-gradient(90deg,var(--ms-blue),#005b9e); color:white}
+    .sidebar{background:#fff; border-right:1px solid #e6eef9}
+    .card{border-radius:var(--card-radius); box-shadow:0 6px 18px rgba(25,40,80,0.06)}
+    .ms-btn{background:var(--ms-blue); color:white; border-radius:10px; padding:.45rem .9rem; border:none}
+    #map{height:360px;border-radius:10px}
+    .small-muted{color:var(--muted)}
+    table.data-table thead{background:#f7fbff}
+    .status-pill{padding:.25rem .6rem; border-radius:999px; font-weight:600}
+    .pill-ok{background:#e6ffef;color:#007a3d}
+    .pill-warn{background:#fff8e6;color:#b36b00}
+    .pill-danger{background:#ffe6e6;color:#b30000}
+  </style>
+</head>
+<body>
+  <header class="app-header py-2 shadow-sm">
+    <div class="container-fluid d-flex align-items-center">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/5/5f/Microsoft_logo_%282012%29.svg" alt="logo" style="height:34px; filter:brightness(10) invert(1); margin-right:14px">
+      <h4 class="mb-0 me-auto">Zero Hunger Planner — Mockup</h4>
+      <div class="d-flex align-items-center gap-3 small-muted">
+        <div>Welcome, Operations Lead</div>
+        <button class="btn btn-light btn-sm">Settings</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container-fluid mt-3">
+    <div class="row">
+      <nav class="col-12 col-lg-2 mb-3 sidebar p-3">
+        <div class="mb-3">
+          <div class="fw-bold mb-2">Navigation</div>
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link active" href="#dashboard">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="#inventory">Inventory</a></li>
+            <li class="nav-item"><a class="nav-link" href="#distribution">Distribution</a></li>
+            <li class="nav-item"><a class="nav-link" href="#maps">Maps</a></li>
+            <li class="nav-item"><a class="nav-link" href="#reports">Reports</a></li>
+            <li class="nav-item"><a class="nav-link" href="#settings">Settings</a></li>
+          </ul>
+        </div>
+
+        <div class="mt-4">
+          <div class="fw-semibold">Quick actions</div>
+          <div class="d-grid gap-2 mt-2">
+            <button class="ms-btn" onclick="openModal('addStock')">+ Add Inventory</button>
+            <button class="btn btn-outline-primary" onclick="runForecast()">Run Demand Forecast</button>
+          </div>
+        </div>
+
+        <hr />
+        <div class="small-muted">System</div>
+        <div class="small-muted mt-1">Backend: Node.js (mock) • Forecast engine: JS Mock • Version: 1.0-MOCK</div>
+      </nav>
+
+      <main class="col-12 col-lg-10">
+        <!-- Dashboard -->
+        <section id="dashboard" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Dashboard</h5>
+            <div class="small-muted">Supply-demand & wastage overview</div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-3">
+              <div class="card p-3">
+                <div class="small-muted">Total Inventory (kg)</div>
+                <h3 id="totalInventory">--</h3>
+                <div class="small-muted">Fresh / Stored / Wastage</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card p-3">
+                <div class="small-muted">Today's Demand Forecast (kg)</div>
+                <h3 id="todayForecast">--</h3>
+                <div class="small-muted">Confidence</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card p-3">
+                <div class="small-muted">Projected Wastage (kg)</div>
+                <h3 id="wastageProj">--</h3>
+                <div class="small-muted">Goal: minimize</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card p-3">
+                <div class="small-muted">Active Distribution Runs</div>
+                <h3 id="activeRuns">--</h3>
+                <div class="small-muted">Routes in progress</div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div><div class="small-muted">Supply–Demand Chart</div><h6>Last 7 days</h6></div>
+                  <div class="small-muted">Last update: <span id="lastUpdate">--</span></div>
+                </div>
+                <canvas id="supplyDemandChart" height="120"></canvas>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Inventory -->
+        <section id="inventory" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Inventory</h5><div class="small-muted">Manage stock & expiry</div></div>
+
+          <div class="card p-3 mb-3">
+            <form id="stockForm" onsubmit="addStock(event)">
+              <div class="row g-2">
+                <div class="col-md-3"><label class="form-label">Item</label><input id="itemName" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">Quantity (kg)</label><input id="itemQty" type="number" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">Expiry Date</label><input type="date" id="itemExpiry" class="form-control"></div>
+                <div class="col-md-3 d-flex align-items-end text-end"><button class="ms-btn">Add Stock</button></div>
+              </div>
+            </form>
+          </div>
+
+          <div class="card p-3">
+            <div class="table-responsive"><table class="table data-table"><thead><tr><th>ID</th><th>Item</th><th>Qty(kg)</th><th>Expiry</th><th>Status</th></tr></thead><tbody id="stockTableBody"></tbody></table></div>
+          </div>
+        </section>
+
+        <!-- Distribution -->
+        <section id="distribution" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Distribution</h5><div class="small-muted">Create runs & optimize routes</div></div>
+
+          <div class="card p-3 mb-3">
+            <form id="runForm" onsubmit="createRun(event)">
+              <div class="row g-2">
+                <div class="col-md-4"><label class="form-label">Run Name</label><input id="runName" class="form-control" required></div>
+                <div class="col-md-4"><label class="form-label">Vehicle</label><input id="vehicle" class="form-control" required></div>
+                <div class="col-md-4 d-flex align-items-end text-end"><button class="ms-btn">Create & Optimize</button></div>
+              </div>
+            </form>
+          </div>
+
+          <div class="card p-3">
+            <div class="small-muted">Active Runs</div>
+            <ul id="runsList" class="list-unstyled mt-2 small-muted"></ul>
+          </div>
+        </section>
+
+        <!-- Maps -->
+        <section id="maps" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Maps</h5><div class="small-muted">Visualize centers, demand & routes</div></div>
+          <div class="card p-3"><div id="map"></div></div>
+        </section>
+
+        <!-- Reports -->
+        <section id="reports" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Reports</h5><div class="small-muted">Wastage, distribution efficiency, supply gaps</div></div>
+          <div class="card p-3">
+            <div class="row">
+              <div class="col-md-6"><h6>Wastage Trend (kg)</h6><canvas id="wastageChart" height="140"></canvas></div>
+              <div class="col-md-6"><h6>Top Demand Areas</h6><canvas id="demandChart" height="140"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="mb-5">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Settings</h5><div class="small-muted">Forecast & optimizer params</div></div>
+          <div class="card p-3">
+            <form id="settingsForm" onsubmit="saveSettings(event)">
+              <div class="row g-3">
+                <div class="col-md-4"><label class="form-label">Forecast Horizon (days)</label><input type="number" id="horizon" class="form-control" value="7"></div>
+                <div class="col-md-4"><label class="form-label">Optimizer Mode</label><select id="optMode" class="form-select"><option>Minimize Time</option><option>Minimize Distance</option><option>Balance</option></select></div>
+                <div class="col-md-4 d-flex align-items-end"><button class="ms-btn">Save Settings</button></div>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Add Inventory Modal -->
+  <div class="modal fade" id="addStock" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Add Inventory</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form id="modalStockForm" onsubmit="addStockModal(event)"><div class="mb-2"><label class="form-label">Item</label><input id="mItem" class="form-control" required></div><div class="mb-2"><label class="form-label">Qty (kg)</label><input id="mQty" type="number" class="form-control" required></div><div class="mb-2 text-end"><button class="ms-btn">Add</button></div></form></div></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // --- Mock datasets ---
+    const stock = [
+      {id:1, item:'Rice', qty:1200, expiry:'2026-06-30'},
+      {id:2, item:'Wheat', qty:800, expiry:'2026-03-31'},
+      {id:3, item:'Canned Veg', qty:400, expiry:'2027-01-15'}
+    ];
+
+    const runs = [
+      {id:1, name:'Morning Run A', vehicle:'Truck-1', stops:5, status:'InProgress'},
+      {id:2, name:'Noon Run B', vehicle:'Van-3', stops:3, status:'Planned'}
+    ];
+
+    const centers = [
+      {id:1, name:'Center 1', lat:12.955, lng:77.575, demand:200},
+      {id:2, name:'Center 2', lat:12.962, lng:77.582, demand:150},
+      {id:3, name:'Center 3', lat:12.948, lng:77.568, demand:300}
+    ];
+
+    const settingsMock = { horizonDays:7, optMode:'Balance' };
+
+    // UI refs
+    const stockTableBody = document.getElementById('stockTableBody');
+    const runsList = document.getElementById('runsList');
+    const totalInventoryEl = document.getElementById('totalInventory');
+    const todayForecastEl = document.getElementById('todayForecast');
+    const wastageProjEl = document.getElementById('wastageProj');
+    const activeRunsEl = document.getElementById('activeRuns');
+
+    function renderStock(){ stockTableBody.innerHTML=''; stock.forEach(s=>{ const tr=document.createElement('tr'); const status = new Date(s.expiry) < new Date(Date.now()+30*24*3600*1000) ? 'NearExpiry' : 'OK'; tr.innerHTML=`<td>${s.id}</td><td>${s.item}</td><td>${s.qty}</td><td>${s.expiry}</td><td><span class="status-pill ${status==='OK'?'pill-ok':'pill-warn'}">${status}</span></td>`; stockTableBody.appendChild(tr); }); totalInventoryEl.textContent = stock.reduce((a,b)=>a+b.qty,0) + ' kg'; }
+
+    function renderRuns(){ runsList.innerHTML=''; runs.forEach(r=>{ const li=document.createElement('li'); li.textContent=`${r.name} — ${r.vehicle} — ${r.status} — ${r.stops} stops`; runsList.appendChild(li); }); activeRunsEl.textContent = runs.filter(r=>r.status==='InProgress').length; }
+
+    // Forecast engine (mock): simple proportional to recent demand and randomness
+    function runForecast(){ const base = centers.reduce((s,c)=>s+c.demand,0); const noise = Math.round((Math.random()-0.4)*50); const forecast = Math.max(0, base + noise); todayForecastEl.textContent = forecast + ' kg'; wastageProjEl.textContent = Math.round(forecast*0.05) + ' kg'; document.getElementById('lastUpdate').textContent = new Date().toLocaleString(); updateSupplyDemandChart(forecast); alert('Demand forecast completed (mock)'); }
+
+    // Optimizer (mock): simple nearest-neighbour style grouping of centers into runs
+    function createRun(e){ e.preventDefault(); const id = runs.length? Math.max(...runs.map(r=>r.id))+1:1; const name = document.getElementById('runName').value; const vehicle = document.getElementById('vehicle').value; // naive optimization: assign 2 centers per run
+      const assigned = centers.slice((id-1)*2,(id-1)*2+2); const stops = assigned.length; runs.push({id,name,vehicle,stops,status:'Planned'}); renderRuns(); alert('Run created and optimized (mock)'); document.getElementById('runForm').reset(); }
+
+    function addStock(e){ e.preventDefault(); const id = stock.length? Math.max(...stock.map(s=>s.id))+1:1; const item=document.getElementById('itemName').value; const qty=parseFloat(document.getElementById('itemQty').value); const expiry=document.getElementById('itemExpiry').value||'2026-12-31'; stock.push({id,item,qty,expiry}); renderStock(); e.target.reset(); }
+    function addStockModal(e){ e.preventDefault(); const id = stock.length? Math.max(...stock.map(s=>s.id))+1:1; const item=document.getElementById('mItem').value; const qty=parseFloat(document.getElementById('mQty').value); stock.push({id,item,qty,expiry:'2026-12-31'}); renderStock(); bootstrap.Modal.getInstance(document.getElementById('addStock')).hide(); e.target.reset(); }
+
+    function saveSettings(e){ e.preventDefault(); settingsMock.horizonDays = parseInt(document.getElementById('horizon').value); settingsMock.optMode = document.getElementById('optMode').value; alert('Settings saved (mock)'); }
+
+    // Map
+    let map;
+    function initMap(){ map = L.map('map').setView([12.955,77.575],13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+      centers.forEach(c=>{ L.circle([c.lat,c.lng],{radius:200, color:c.demand>250?'red':'orange', fillOpacity:0.25}).bindPopup(`${c.name}<br/>Demand: ${c.demand} kg`).addTo(map); });
+      // draw mock routes
+      const route = centers.map(c=>[c.lat,c.lng]); L.polyline(route,{color:'blue'}).addTo(map);
+    }
+
+    // Charts
+    let supplyDemandChart, wastageChart, demandChart;
+    function initCharts(){
+      const ctx = document.getElementById('supplyDemandChart').getContext('2d');
+      const days = ['D-6','D-5','D-4','D-3','D-2','D-1','Today'];
+      const supply = [1200,1150,1100,1300,1250,1180,1200];
+      const demand = [1000,1080,950,1200,1150,1100,1250];
+      supplyDemandChart = new Chart(ctx,{type:'line', data:{labels:days, datasets:[{label:'Supply (kg)', data:supply, tension:0.3},{label:'Demand (kg)', data:demand, tension:0.3}]}, options:{}});
+
+      const ctx2 = document.getElementById('wastageChart').getContext('2d');
+      wastageChart = new Chart(ctx2,{type:'bar', data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets:[{label:'Wastage (kg)', data:[50,40,60,30,45,55,48]}]}});
+
+      const ctx3 = document.getElementById('demandChart').getContext('2d');
+      demandChart = new Chart(ctx3,{type:'doughnut', data:{labels:centers.map(c=>c.name), datasets:[{data:centers.map(c=>c.demand)}]}});
+    }
+
+    function updateSupplyDemandChart(forecast){ supplyDemandChart.data.datasets[1].data[supplyDemandChart.data.datasets[1].data.length-1] = forecast; supplyDemandChart.update(); }
+
+    document.addEventListener('DOMContentLoaded', ()=>{ renderStock(); renderRuns(); initMap(); initCharts(); document.getElementById('totalInventory').textContent = stock.reduce((a,b)=>a+b.qty,0) + ' kg'; document.getElementById('todayForecast').textContent = centers.reduce((s,c)=>s+c.demand,0) + ' kg'; document.getElementById('wastageProj').textContent = Math.round(centers.reduce((s,c)=>s+c.demand,0)*0.05) + ' kg'; document.getElementById('activeRuns').textContent = runs.filter(r=>r.status==='InProgress').length; document.getElementById('lastUpdate').textContent = new Date().toLocaleString(); });
+
+    function openModal(id){ const m = new bootstrap.Modal(document.getElementById(id)); m.show(); }
+
+  </script>
+  <footer class="text-center small-muted py-3">Backend note: Designed for Node.js microservices — forecast engine (time-series), routing optimizer (vehicle routing / OR-Tools) and datastore (Postgres / MongoDB).</footer>
+</body>
+</html>

@@ -9,7 +9,7 @@ const isLoggedIn = () => !!getToken();
 
 // API Helper Functions
 const api = {
-    // Generic fetch wrapper
+    // Generic fetch wrapper with timeout
     async request(endpoint, options = {}) {
         const token = getToken();
         const headers = {
@@ -18,11 +18,26 @@ const api = {
             ...options.headers
         };
 
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 ...options,
-                headers
+                headers,
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
+
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error('Server error. Please try again.');
+            }
 
             const data = await response.json();
 
@@ -32,6 +47,10 @@ const api = {
 
             return data;
         } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out. Please try again.');
+            }
             console.error('API Error:', error);
             throw error;
         }
